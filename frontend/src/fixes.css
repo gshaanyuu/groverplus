@@ -16,3 +16,8 @@
 .loading-mark span { color:#15803d; }
 @media (max-width:900px) { .app-shell > aside { width:72px; } .app-shell > aside .nav { font-size:0; } }
 @media (max-width:650px) { .order-layout .order-summary { width:100%; min-width:0; } }
+.google-btn { display:flex; align-items:center; justify-content:center; gap:10px; }
+.google-btn svg { flex-shrink:0; }
+.avatar-img { width:36px; height:36px; border-radius:50%; object-fit:cover; }
+.seller-mini .avatar-img { width:40px; height:40px; }
+.seller-mini small { display:block; font-size:10px; color:#718096; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px; }
