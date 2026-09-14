@@ -1,0 +1,55 @@
+{
+  "app_type": "saas_app",
+  "theme": "light",
+  "archetype": "ORGANIC & EARTHY (Trust, Growth, Calm) with Modern SaaS Polish",
+  "typography": {
+    "headings": "Outfit, sans-serif",
+    "body": "Plus Jakarta Sans, sans-serif",
+    "weights": {
+      "light": "font-light",
+      "normal": "font-normal",
+      "medium": "font-medium",
+      "semibold": "font-semibold",
+      "bold": "font-bold",
+      "black": "font-extrabold"
+    }
+  },
+  "colors": {
+    "primary": "#15803d",
+    "primary_hover": "#166534",
+    "accent": "#f59e0b",
+    "background": "#f8fafc",
+    "surface": "#ffffff",
+    "text_main": "#0f172a",
+    "text_muted": "#64748b",
+    "border": "#e2e8f0",
+    "forbidden_check": "Passed. No #7351B7 or #1B93A4 used."
+  },
+  "visual_enhancers": {
+    "border_radius": "rounded-xl",
+    "shadows": "shadow-[0_4px_20px_rgba(0,0,0,0.05)]",
+    "glassmorphism": "backdrop-blur-xl bg-white/80 border border-white/20"
+  },
+  "component_path": "/app/frontend/src",
+  "instructions_to_main_agent": [
+    "Ensure all interactive elements and key informational elements include testids like data-testid='seller-login-btn', data-testid='stock-update-input', data-testid='customer-select', etc.",
+    "Implement phone OTP seller login flow with simulated OTP verification.",
+    "Stock management: allow adding/editing products with price, stock count, availability toggle, and category.",
+    "Customer detail management: name, phone, address, and fixed society dropdown (e.g. Prestige Ozone, Palm Meadows, Brigade Gateway, Sobha Dream Acres, Godrej Woods).",
+    "Customer order placement: select customer from society, add products with quantities, calculate totals, place order, update delivery status (Pending, Out for Delivery, Delivered), and view order history.",
+    "Ensure all UI components use Tailwind CSS, shadcn/ui primitives, and lucide-react icons.",
+    "Make the UI extremely attractive, featuring clean bento cards, badge tags for delivery status, quick action buttons, and responsive tables/grids."
+  ],
+  "image_urls": [
+    {
+      "category": "inventory_hero",
+      "image_url": "https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwyfHxncm9jZXJ5JTIwc3RvcmUlMjBzaGVsZiUyMGludmVudG9yeXxlbnwwfHx8fDE3ODkzOTQ2MTJ8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Fresh produce and grocery stock shelf"
+    },
+    {
+      "category": "grocery_aisle",
+      "image_url": "https://images.unsplash.com/photo-1670684684445-a4504dca0bbc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwxfHxncm9jZXJ5JTIwc3RvcmUlMjBzaGVsZiUyMGludmVudG9yeXxlbnwwfHx8fDE3ODkzOTQ2MTJ8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Grocery store aisle filled with food and goods"
+    }
+  ]
+}
