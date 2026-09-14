@@ -210,6 +210,45 @@ async def get_orders(seller: Seller = Depends(get_current_seller)):
     return await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
 
 
+@api.get("/insights/societies")
+async def society_insights(seller: Seller = Depends(get_current_seller)):
+    now = datetime.now(timezone.utc)
+    week_start = (now - timedelta(days=7)).isoformat()
+    prev_start = (now - timedelta(days=14)).isoformat()
+    orders = await db.orders.find({"created_at": {"$gte": prev_start}}, {"_id": 0}).to_list(1000)
+    agg = {s: {"society": s, "orders_this_week": 0, "revenue_this_week": 0.0, "orders_prev_week": 0, "revenue_prev_week": 0.0, "product_counts": {}} for s in SOCIETIES}
+    for o in orders:
+        if o.get("society") not in agg:
+            continue
+        bucket = agg[o["society"]]
+        if o["created_at"] >= week_start:
+            bucket["orders_this_week"] += 1
+            bucket["revenue_this_week"] += float(o.get("total", 0))
+            for it in o.get("items", []):
+                bucket["product_counts"][it["name"]] = bucket["product_counts"].get(it["name"], 0) + int(it.get("quantity", 0))
+        else:
+            bucket["orders_prev_week"] += 1
+            bucket["revenue_prev_week"] += float(o.get("total", 0))
+    result = []
+    for s in SOCIETIES:
+        b = agg[s]
+        top = max(b["product_counts"].items(), key=lambda kv: kv[1], default=(None, 0))
+        prev = b["revenue_prev_week"]
+        change_pct = None if prev == 0 else round((b["revenue_this_week"] - prev) / prev * 100, 1)
+        result.append({
+            "society": s,
+            "orders_this_week": b["orders_this_week"],
+            "revenue_this_week": round(b["revenue_this_week"], 2),
+            "revenue_prev_week": round(prev, 2),
+            "change_pct": change_pct,
+            "top_product": top[0],
+            "top_product_qty": top[1],
+        })
+    result.sort(key=lambda r: r["revenue_this_week"], reverse=True)
+    total_revenue = round(sum(r["revenue_this_week"] for r in result), 2)
+    return {"week_start": week_start, "total_revenue": total_revenue, "societies": result}
+
+
 @api.post("/orders", response_model=Order)
 async def create_order(order: Order, seller: Seller = Depends(get_current_seller)):
     for item in order.items:

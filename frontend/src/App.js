@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
-import { LayoutDashboard, Package, Users, ShoppingBag, LogOut, Plus, Search, ArrowUpRight, MapPin, ChevronDown, Check, X } from "lucide-react";
+import { LayoutDashboard, Package, Users, ShoppingBag, LogOut, Plus, Search, ArrowUpRight, MapPin, ChevronDown, Check, X, TrendingUp, TrendingDown, Trophy } from "lucide-react";
 import "@/App.css";
 import "@/fixes.css";
 
@@ -98,6 +98,7 @@ function Dashboard() {
   const [selected, setSelected] = useState("");
   const [cart, setCart] = useState({});
   const [society, setSociety] = useState("All societies");
+  const [insights, setInsights] = useState(null);
 
   useEffect(() => {
     if (seller) return;
@@ -115,12 +116,13 @@ function Dashboard() {
 
   const load = async () => {
     try {
-      const [p, c, o] = await Promise.all([
+      const [p, c, o, i] = await Promise.all([
         axios.get(`${API}/products`),
         axios.get(`${API}/customers`),
         axios.get(`${API}/orders`),
+        axios.get(`${API}/insights/societies`),
       ]);
-      setProducts(p.data); setCustomers(c.data); setOrders(o.data);
+      setProducts(p.data); setCustomers(c.data); setOrders(o.data); setInsights(i.data);
     } finally {
       setLoading(false);
     }
@@ -216,7 +218,7 @@ function Dashboard() {
             {seller.picture ? <img className="avatar-img" src={seller.picture} alt={seller.name} /> : <div className="avatar">{initials(seller.name)}</div>}
           </div>
         </header>
-        {tab === "Overview" && <Overview stats={stats} products={products} customers={customers} orders={orders} setTab={setTab} />}
+        {tab === "Overview" && <Overview stats={stats} products={products} customers={customers} orders={orders} insights={insights} setTab={setTab} setSociety={setSociety} />}
         {tab === "Inventory" && <Inventory products={visibleProducts} search={search} setSearch={setSearch} onAdd={() => { setEditingProduct(null); setForm(initialForm); setShowProduct(true); }} onEdit={editProduct} />}
         {tab === "Customers" && <CustomersTab customers={customers} society={society} setSociety={setSociety} onAdd={() => { setEditingCustomer(null); setForm({ ...initialForm, society: "Prestige Ozone" }); setShowCustomer(true); }} onEdit={editCustomer} />}
         {tab === "Orders" && <OrdersTab orders={orders} customers={customers} products={products} selected={selected} setSelected={setSelected} cart={cart} setCart={setCart} cartItems={cartItems} total={total} placeOrder={placeOrder} load={load} />}
@@ -227,7 +229,7 @@ function Dashboard() {
   );
 }
 
-function Overview({ stats, products, customers, orders, setTab }) {
+function Overview({ stats, products, customers, orders, insights, setTab, setSociety }) {
   return (
     <>
       <section className="welcome-band">
@@ -248,6 +250,7 @@ function Overview({ stats, products, customers, orders, setTab }) {
           </div>
         ))}
       </div>
+      <SocietyInsights insights={insights} setTab={setTab} setSociety={setSociety} />
       <div className="section-head"><div><p className="eyebrow">QUICK ACCESS</p><h2>Run your day</h2></div></div>
       <div className="quick-grid">
         <button data-testid="quick-inventory-btn" onClick={() => setTab("Inventory")}><Package /><span><b>Update inventory</b><small>{products.length} products need your attention</small></span><ArrowUpRight /></button>
@@ -257,6 +260,60 @@ function Overview({ stats, products, customers, orders, setTab }) {
       <div className="section-head recent"><div><p className="eyebrow">RECENT ACTIVITY</p><h2>Latest orders</h2></div><button data-testid="view-all-orders-btn" className="text-btn" onClick={() => setTab("Orders")}>View all <ArrowUpRight size={15} /></button></div>
       <OrderList orders={orders.slice(0, 3)} />
     </>
+  );
+}
+
+function SocietyInsights({ insights, setTab, setSociety }) {
+  if (!insights) return null;
+  const rows = insights.societies || [];
+  const max = Math.max(1, ...rows.map(r => r.revenue_this_week));
+  const leader = rows[0] && rows[0].revenue_this_week > 0 ? rows[0] : null;
+  const jump = (society) => { setSociety(society); setTab("Customers"); };
+  return (
+    <section className="insights" data-testid="society-insights">
+      <div className="section-head insights-head">
+        <div>
+          <p className="eyebrow">SOCIETY INSIGHTS · THIS WEEK</p>
+          <h2>Where the demand is</h2>
+        </div>
+        <span className="insights-total" data-testid="insights-total-revenue">Total this week · {money(insights.total_revenue)}</span>
+      </div>
+      {leader && (
+        <div className="insights-leader" data-testid="insights-leader">
+          <Trophy size={18} />
+          <div>
+            <small>TOP SOCIETY</small>
+            <b>{leader.society}</b>
+            <span>{money(leader.revenue_this_week)} across {leader.orders_this_week} order{leader.orders_this_week === 1 ? "" : "s"}{leader.top_product ? ` · loves ${leader.top_product}` : ""}</span>
+          </div>
+          <button data-testid="insights-push-offer-btn" className="text-btn" onClick={() => jump(leader.society)}>Push an offer <ArrowUpRight size={15} /></button>
+        </div>
+      )}
+      <div className="insights-list">
+        {rows.map(r => {
+          const pct = Math.round((r.revenue_this_week / max) * 100);
+          const trendUp = r.change_pct != null && r.change_pct >= 0;
+          return (
+            <button key={r.society} className="insights-row" data-testid={`insights-row-${r.society.toLowerCase().replaceAll(" ", "-")}`} onClick={() => jump(r.society)}>
+              <div className="insights-row-top">
+                <b>{r.society}</b>
+                <span>{money(r.revenue_this_week)}</span>
+              </div>
+              <div className="insights-bar"><i style={{ width: `${pct}%` }} /></div>
+              <div className="insights-row-meta">
+                <small>{r.orders_this_week} order{r.orders_this_week === 1 ? "" : "s"}{r.top_product ? ` · top: ${r.top_product}` : ""}</small>
+                {r.change_pct != null && (
+                  <em className={trendUp ? "trend up" : "trend down"}>
+                    {trendUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                    {trendUp ? "+" : ""}{r.change_pct}% vs last week
+                  </em>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

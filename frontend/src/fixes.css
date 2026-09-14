@@ -21,3 +21,28 @@
 .avatar-img { width:36px; height:36px; border-radius:50%; object-fit:cover; }
 .seller-mini .avatar-img { width:40px; height:40px; }
 .seller-mini small { display:block; font-size:10px; color:#718096; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px; }
+
+.insights { margin:32px 0 8px; padding:26px; background:#f7faf5; border:1px solid #e6eee0; border-radius:18px; }
+.insights-head { align-items:flex-end; margin-top:0 !important; }
+.insights-total { font-size:11px; color:#5a6b53; background:#fff; padding:8px 14px; border-radius:20px; border:1px solid #e6eee0; }
+.insights-leader { display:flex; align-items:center; gap:14px; padding:16px 18px; background:linear-gradient(90deg,#123524,#1f5133); color:#f4f7f0; border-radius:14px; margin-bottom:18px; }
+.insights-leader svg { color:#f6c667; flex-shrink:0; }
+.insights-leader div { flex:1; }
+.insights-leader small { display:block; font-size:9.5px; letter-spacing:2px; color:#c7d8b9; }
+.insights-leader b { display:block; font:600 20px Outfit; margin:2px 0 4px; }
+.insights-leader span { font-size:12px; color:#d5e2c7; }
+.insights-leader .text-btn { color:#f6c667; background:transparent; border:1px solid #f6c66740; padding:8px 14px; border-radius:20px; }
+.insights-leader .text-btn:hover { background:#f6c66720; }
+.insights-list { display:grid; gap:10px; }
+.insights-row { text-align:left; background:#fff; border:1px solid #e6eee0; border-radius:12px; padding:12px 14px; cursor:pointer; transition:border-color .15s, transform .15s; }
+.insights-row:hover { border-color:#a5cf99; transform:translateX(2px); }
+.insights-row-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.insights-row-top b { font:600 14px Outfit; color:var(--ink); }
+.insights-row-top span { font:600 13px Outfit; color:#123524; }
+.insights-bar { height:6px; background:#eef2ea; border-radius:99px; overflow:hidden; }
+.insights-bar i { display:block; height:100%; background:linear-gradient(90deg,#3c8d54,#7ab86a); border-radius:99px; transition:width .4s ease; }
+.insights-row-meta { display:flex; justify-content:space-between; margin-top:6px; }
+.insights-row-meta small { font-size:11px; color:#6b7d64; }
+.trend { display:inline-flex; align-items:center; gap:3px; font-size:10.5px; font-style:normal; padding:2px 8px; border-radius:99px; }
+.trend.up { background:#e5f5e5; color:#368047; }
+.trend.down { background:#fbeaea; color:#a13c3c; }
