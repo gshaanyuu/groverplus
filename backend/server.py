@@ -22,7 +22,7 @@ class Product(BaseModel):
     name: str
     category: str
     price: float
-    stock: int
+    stock: int = Field(ge=0)
     available: bool = True
 
 class Customer(BaseModel):

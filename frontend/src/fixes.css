@@ -5,6 +5,12 @@
 .status-select.out-for-delivery { background:#e0eff5; color:#31738a; }
 .availability-toggle { display:flex !important; align-items:center; justify-content:space-between; gap:12px; }
 .availability-toggle input { width:18px !important; height:18px; accent-color:var(--green); }
+.product-price-row { margin-bottom:10px; }
+.stock-editor { display:flex; align-items:center; gap:6px; margin-top:4px; }
+.stock-editor button { width:26px; height:26px; border-radius:6px; background:#eef6e5; color:var(--green); font-size:17px; line-height:1; }
+.stock-editor button:hover { background:#dff0bf; }
+.stock-editor input { width:54px; height:26px; border:1px solid var(--line); border-radius:6px; text-align:center; font-size:12px; outline:none; color:var(--ink); }
+.stock-editor input:focus { border-color:var(--green); box-shadow:0 0 0 2px #dff0bf; }
 .loading-screen { min-height:100vh; display:grid; place-content:center; justify-items:center; background:#f7faf7; color:#718096; font-size:12px; }
 .loading-mark { font:700 29px Outfit; color:#123524; }
 .loading-mark span { color:#15803d; }

@@ -66,6 +66,22 @@ def test_product_update_persists_stock_price_and_availability(client):
     assert fetched["price"] == 15 and fetched["stock"] == 2 and fetched["available"] is False
 
 
+def test_product_update_rejects_negative_stock_without_persisting(client):
+    product = client.post(f"{BASE_URL}/api/products", json={
+        "name": "TEST Nonnegative Stock", "category": "Pantry", "price": 10,
+        "stock": 4, "available": True,
+    })
+    assert product.status_code == 200
+    product_id = product.json()["id"]
+    update = client.put(f"{BASE_URL}/api/products/{product_id}", json={
+        "name": "TEST Nonnegative Stock", "category": "Pantry", "price": 10,
+        "stock": -3, "available": True,
+    })
+    assert update.status_code == 422
+    fetched = next(item for item in client.get(f"{BASE_URL}/api/products").json() if item["id"] == product_id)
+    assert fetched["stock"] == 4
+
+
 def test_customer_update_persists_all_details(client):
     customer = client.post(f"{BASE_URL}/api/customers", json={
         "name": "TEST Update Customer", "phone": "9000000001", "address": "Old address",

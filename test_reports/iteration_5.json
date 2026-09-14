@@ -1,0 +1,37 @@
+{
+  "summary": "Focused retest passed: negative stock PUT is rejected with 422 and the prior stock remains unchanged; all requested inventory, auth, customer, order, edit, status, and mobile flows passed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results_iteration5.xml"
+  ],
+  "action_items": [
+    "Add stable React keys to mapped navigation, product, customer, order, and option elements to remove console warnings.",
+    "Render customer option text without a span child inside option to avoid the React hydration warning."
+  ],
+  "critical_code_review_comments": [
+    "No blocking issues found. React reports missing key props in multiple .map() renders and invalid span content inside select options; these are non-blocking today but should be corrected for clean rendering and reconciliation."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/iteration_5.json",
+    "/app/test_reports/pytest/pytest_results_iteration5.xml"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11)",
+    "frontend": "100% of exercised flows"
+  },
+  "seed_data_creation": "Regression tests created TEST-prefixed products/customers; browser coverage created one order and updated existing/test inventory values. Preview data was not cleaned up.",
+  "retest_needed": true,
+  "should_call_test_agent_after_fix": true,
+  "context_for_next_testing_agent": "Negative PUT validation is verified live at 422 with no persistence. OTP uses demo code 123456. Inventory plus/minus, typed blur persistence, search, price/availability edit, societies, order placement/status, and 390px mobile rendering passed. PHONE SMS OTP IS MOCKED; no Twilio/SMS integration is connected. Follow up on React console warnings if cleaned up.",
+  "rca of the issue": "The prior negative-stock defect was caused by an unconstrained Product.stock integer combined with replace_one persistence. Product.stock now uses Field(ge=0), so FastAPI rejects stock=-3 during request validation before replacement; the existing document remains at stock 4."
+}

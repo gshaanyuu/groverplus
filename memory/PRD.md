@@ -8,7 +8,7 @@ Local society seller managing grocery inventory and placing orders for residents
 ## Core requirements
 Phone OTP login; product creation and stock/price/availability; customer CRUD fields; fixed society grouping; customer order builder; order status/history.
 ## Implemented (2026-06-24)
-Attractive responsive Grove seller workspace, seeded demo data, overview, inventory, inventory editing (price, stock, availability), customer directory with full society filtering and editing, order creation with stock limits, order history, delivery status updates, hydration loading state, and API endpoints.
+Attractive responsive Grove seller workspace, seeded demo data, overview, inventory, inline stock stepper editing (minus, editable quantity, plus) with persistence and nonnegative API validation, inventory editing (price, stock, availability), customer directory with full society filtering and editing, order creation with stock limits, order history, delivery status updates, hydration loading state, and API endpoints.
 ## Prioritized backlog
 P0: Real SMS OTP provider and persistent seller sessions. P1: Analytics exports and delivery notifications. P2: Multi-seller roles and advanced reporting.
 ## Next tasks
