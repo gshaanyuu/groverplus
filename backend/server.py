@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,7 +6,9 @@ from pydantic import BaseModel, Field
 from pathlib import Path
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
-import os, uuid, httpx
+import os, uuid, httpx, requests, logging
+
+logger = logging.getLogger("grove")
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -16,6 +18,55 @@ app = FastAPI()
 api = APIRouter(prefix="/api")
 SOCIETIES = ["Prestige Ozone", "Palm Meadows", "Brigade Gateway", "Sobha Dream Acres", "Godrej Woods"]
 EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
+
+STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
+STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
+EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
+APP_NAME = "grove-seller"
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_IMAGE_BYTES = 6 * 1024 * 1024
+
+_storage_key: Optional[str] = None
+
+
+def init_storage(force: bool = False) -> str:
+    global _storage_key
+    if _storage_key and not force:
+        return _storage_key
+    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
+    resp.raise_for_status()
+    _storage_key = resp.json()["storage_key"]
+    return _storage_key
+
+
+def put_object(path: str, data: bytes, content_type: str) -> dict:
+    key = init_storage()
+    resp = requests.put(
+        f"{STORAGE_URL}/objects/{path}",
+        headers={"X-Storage-Key": key, "Content-Type": content_type},
+        data=data,
+        timeout=120,
+    )
+    if resp.status_code == 404:
+        key = init_storage(force=True)
+        resp = requests.put(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key, "Content-Type": content_type},
+            data=data,
+            timeout=120,
+        )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def get_object(path: str):
+    key = init_storage()
+    resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
+    if resp.status_code == 404:
+        key = init_storage(force=True)
+        resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
+    resp.raise_for_status()
+    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
 
 class Seller(BaseModel):
@@ -32,6 +83,7 @@ class Product(BaseModel):
     price: float
     stock: int = Field(ge=0)
     available: bool = True
+    image_url: Optional[str] = None
 
 
 class Customer(BaseModel):
@@ -179,6 +231,56 @@ async def update_product(product_id: str, product: Product, seller: Seller = Dep
     return Product(**data)
 
 
+@api.delete("/products/{product_id}")
+async def delete_product(product_id: str, seller: Seller = Depends(get_current_seller)):
+    result = await db.products.delete_one({"id": product_id})
+    if not result.deleted_count:
+        raise HTTPException(404, "Product not found")
+    return {"success": True}
+
+
+@api.post("/upload/product-image")
+async def upload_product_image(file: UploadFile = File(...), seller: Seller = Depends(get_current_seller)):
+    content_type = (file.content_type or "").lower()
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(400, "Only JPEG, PNG, WEBP or GIF images are allowed")
+    data = await file.read()
+    if len(data) > MAX_IMAGE_BYTES:
+        raise HTTPException(400, "Image is larger than 6 MB")
+    ext = (file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else content_type.split("/")[-1]).lower()
+    path = f"{APP_NAME}/products/{seller.user_id}/{uuid.uuid4()}.{ext}"
+    try:
+        result = put_object(path, data, content_type)
+    except Exception as e:
+        logger.exception("upload failed")
+        raise HTTPException(502, f"Upload failed: {e}")
+    stored_path = result["path"]
+    await db.files.insert_one({
+        "id": str(uuid.uuid4()),
+        "storage_path": stored_path,
+        "original_filename": file.filename,
+        "content_type": content_type,
+        "size": result.get("size", len(data)),
+        "uploaded_by": seller.user_id,
+        "is_deleted": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"path": stored_path, "url": f"/api/files/{stored_path}"}
+
+
+@api.get("/files/{path:path}")
+async def serve_file(path: str, seller: Seller = Depends(get_current_seller)):
+    record = await db.files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 0})
+    if not record:
+        raise HTTPException(404, "File not found")
+    try:
+        data, content_type = get_object(path)
+    except Exception as e:
+        logger.exception("file fetch failed")
+        raise HTTPException(502, f"File fetch failed: {e}")
+    return Response(content=data, media_type=record.get("content_type") or content_type, headers={"Cache-Control": "private, max-age=3600"})
+
+
 @api.get("/customers", response_model=List[Customer])
 async def get_customers(seller: Seller = Depends(get_current_seller)):
     return await db.customers.find({}, {"_id": 0}).to_list(200)
@@ -203,6 +305,14 @@ async def update_customer(customer_id: str, customer: Customer, seller: Seller =
     if not result.matched_count:
         raise HTTPException(404, "Customer not found")
     return Customer(**data)
+
+
+@api.delete("/customers/{customer_id}")
+async def delete_customer(customer_id: str, seller: Seller = Depends(get_current_seller)):
+    result = await db.customers.delete_one({"id": customer_id})
+    if not result.deleted_count:
+        raise HTTPException(404, "Customer not found")
+    return {"success": True}
 
 
 @api.get("/orders", response_model=List[Order])
@@ -275,6 +385,11 @@ async def update_status(order_id: str, status: str, seller: Seller = Depends(get
 
 @app.on_event("startup")
 async def seed_data():
+    try:
+        init_storage()
+        logger.info("Object storage initialized")
+    except Exception as e:
+        logger.error(f"Storage init failed: {e}")
     if await db.products.count_documents({}) == 0:
         await db.products.insert_many([
             Product(name="Farm Fresh Milk", category="Dairy", price=58, stock=34).model_dump(),

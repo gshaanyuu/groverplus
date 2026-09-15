@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
-import { LayoutDashboard, Package, Users, ShoppingBag, LogOut, Plus, Search, ArrowUpRight, MapPin, ChevronDown, Check, X, TrendingUp, TrendingDown, Trophy } from "lucide-react";
+import { LayoutDashboard, Package, Users, ShoppingBag, LogOut, Plus, Search, ArrowUpRight, MapPin, ChevronDown, Check, X, TrendingUp, TrendingDown, Trophy, Trash2, ImagePlus } from "lucide-react";
 import "@/App.css";
 import "@/fixes.css";
 
@@ -77,7 +77,7 @@ function AuthCallback() {
   );
 }
 
-const initialForm = { name: "", category: "Dairy", price: "", stock: "", available: true };
+const initialForm = { name: "", category: "Dairy", price: "", stock: "", available: true, image_url: "" };
 
 function Dashboard() {
   const location = useLocation();
@@ -137,7 +137,7 @@ function Dashboard() {
   };
 
   const saveProduct = async () => {
-    const data = { ...form, price: +form.price, stock: +form.stock };
+    const data = { ...form, price: +form.price, stock: +form.stock, image_url: form.image_url || null };
     if (editingProduct) await axios.put(`${API}/products/${editingProduct.id}`, data);
     else await axios.post(`${API}/products`, data);
     setShowProduct(false); setEditingProduct(null); setForm(initialForm); load();
@@ -147,8 +147,18 @@ function Dashboard() {
     else await axios.post(`${API}/customers`, form);
     setShowCustomer(false); setEditingCustomer(null); setForm(initialForm); load();
   };
-  const editProduct = (p) => { setEditingProduct(p); setForm(p); setShowProduct(true); };
+  const editProduct = (p) => { setEditingProduct(p); setForm({ ...initialForm, ...p }); setShowProduct(true); };
   const editCustomer = (c) => { setEditingCustomer(c); setForm({ ...c, society: c.society || "Prestige Ozone" }); setShowCustomer(true); };
+  const deleteProduct = async (p) => {
+    if (!window.confirm(`Remove "${p.name}" from your catalogue?`)) return;
+    await axios.delete(`${API}/products/${p.id}`);
+    load();
+  };
+  const deleteCustomer = async (c) => {
+    if (!window.confirm(`Remove ${c.name} from your customer list?`)) return;
+    await axios.delete(`${API}/customers/${c.id}`);
+    load();
+  };
 
   const cartItems = useMemo(() => Object.entries(cart)
     .filter(([, q]) => q > 0)
@@ -219,8 +229,8 @@ function Dashboard() {
           </div>
         </header>
         {tab === "Overview" && <Overview stats={stats} products={products} customers={customers} orders={orders} insights={insights} setTab={setTab} setSociety={setSociety} />}
-        {tab === "Inventory" && <Inventory products={visibleProducts} search={search} setSearch={setSearch} onAdd={() => { setEditingProduct(null); setForm(initialForm); setShowProduct(true); }} onEdit={editProduct} />}
-        {tab === "Customers" && <CustomersTab customers={customers} society={society} setSociety={setSociety} onAdd={() => { setEditingCustomer(null); setForm({ ...initialForm, society: "Prestige Ozone" }); setShowCustomer(true); }} onEdit={editCustomer} />}
+        {tab === "Inventory" && <Inventory products={visibleProducts} search={search} setSearch={setSearch} onAdd={() => { setEditingProduct(null); setForm(initialForm); setShowProduct(true); }} onEdit={editProduct} onDelete={deleteProduct} />}
+        {tab === "Customers" && <CustomersTab customers={customers} society={society} setSociety={setSociety} onAdd={() => { setEditingCustomer(null); setForm({ ...initialForm, society: "Prestige Ozone" }); setShowCustomer(true); }} onEdit={editCustomer} onDelete={deleteCustomer} />}
         {tab === "Orders" && <OrdersTab orders={orders} customers={customers} products={products} selected={selected} setSelected={setSelected} cart={cart} setCart={setCart} cartItems={cartItems} total={total} placeOrder={placeOrder} load={load} />}
         {showProduct && <Modal title={editingProduct ? "Update product" : "Add a product"} close={() => { setShowProduct(false); setEditingProduct(null); }}><FormProduct form={form} setForm={setForm} submit={saveProduct} /></Modal>}
         {showCustomer && <Modal title={editingCustomer ? "Update customer" : "Add a customer"} close={() => { setShowCustomer(false); setEditingCustomer(null); }}><FormCustomer form={form} setForm={setForm} submit={saveCustomer} /></Modal>}
@@ -317,7 +327,7 @@ function SocietyInsights({ insights, setTab, setSociety }) {
   );
 }
 
-function Inventory({ products, search, setSearch, onAdd, onEdit }) {
+function Inventory({ products, search, setSearch, onAdd, onEdit, onDelete }) {
   const [stockValues, setStockValues] = useState({});
   const valueFor = p => stockValues[p.id] ?? p.stock;
   const saveStock = async (p, value) => {
@@ -325,6 +335,7 @@ function Inventory({ products, search, setSearch, onAdd, onEdit }) {
     setStockValues(prev => ({ ...prev, [p.id]: next }));
     await axios.put(`${API}/products/${p.id}`, { ...p, stock: next });
   };
+  const imgSrc = (p) => p.image_url ? `${process.env.REACT_APP_BACKEND_URL}${p.image_url}` : null;
   return (
     <>
       <div className="toolbar">
@@ -334,7 +345,11 @@ function Inventory({ products, search, setSearch, onAdd, onEdit }) {
       <div className="product-grid">
         {products.map(p => (
           <div key={p.id} className="product-card" data-testid={`product-card-${p.id}`}>
-            <div className="product-art"><span>{p.category === "Dairy" ? "🥛" : p.category === "Produce" ? "🍌" : "🍞"}</span><i className={p.available ? "available" : "unavailable"} /></div>
+            <div className="product-art">
+              {imgSrc(p) ? <img className="product-photo" src={imgSrc(p)} alt={p.name} /> : <span>{p.category === "Dairy" ? "🥛" : p.category === "Produce" ? "🍌" : "🍞"}</span>}
+              <i className={p.available ? "available" : "unavailable"} />
+              <button data-testid={`delete-product-${p.id}`} aria-label={`Delete ${p.name}`} className="delete-chip" onClick={() => onDelete(p)}><Trash2 size={14} /></button>
+            </div>
             <div className="product-info">
               <small>{p.category}</small>
               <h3>{p.name}</h3>
@@ -344,7 +359,7 @@ function Inventory({ products, search, setSearch, onAdd, onEdit }) {
                 <input data-testid={`stock-quantity-${p.id}`} aria-label={`${p.name} stock quantity`} type="number" min="0" value={valueFor(p)} onChange={e => setStockValues(prev => ({ ...prev, [p.id]: e.target.value }))} onBlur={e => saveStock(p, e.target.value)} />
                 <button data-testid={`stock-increase-${p.id}`} aria-label={`Increase ${p.name} stock`} onClick={() => saveStock(p, valueFor(p) + 1)}>+</button>
               </div>
-              <button data-testid={`edit-product-${p.id}`} className="edit-link" onClick={() => onEdit(p)}>Edit price & availability <ArrowUpRight size={13} /></button>
+              <button data-testid={`edit-product-${p.id}`} className="edit-link" onClick={() => onEdit(p)}>Edit details & photo <ArrowUpRight size={13} /></button>
             </div>
           </div>
         ))}
@@ -355,7 +370,7 @@ function Inventory({ products, search, setSearch, onAdd, onEdit }) {
 
 const SOCIETY_FILTERS = ["All societies", "Prestige Ozone", "Palm Meadows", "Brigade Gateway", "Sobha Dream Acres", "Godrej Woods"];
 
-function CustomersTab({ customers, society, setSociety, onAdd, onEdit }) {
+function CustomersTab({ customers, society, setSociety, onAdd, onEdit, onDelete }) {
   const list = customers.filter(c => society === "All societies" || c.society === society);
   return (
     <>
@@ -373,7 +388,8 @@ function CustomersTab({ customers, society, setSociety, onAdd, onEdit }) {
             <div className="avatar soft">{initials(c.name)}</div>
             <div className="customer-main"><b>{c.name}</b><span>{c.phone} · {c.address}</span></div>
             <span className="society-tag"><MapPin size={13} />{c.society}</span>
-            <button data-testid={`edit-customer-${c.id}`} className="icon-btn" onClick={() => onEdit(c)}><ArrowUpRight size={17} /></button>
+            <button data-testid={`edit-customer-${c.id}`} className="icon-btn" onClick={() => onEdit(c)} aria-label={`Edit ${c.name}`}><ArrowUpRight size={17} /></button>
+            <button data-testid={`delete-customer-${c.id}`} className="icon-btn danger" onClick={() => onDelete(c)} aria-label={`Delete ${c.name}`}><Trash2 size={16} /></button>
           </div>
         ))}
       </div>
@@ -471,8 +487,37 @@ function Modal({ title, close, children }) {
 }
 
 function FormProduct({ form, setForm, submit }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const previewSrc = form.image_url ? `${process.env.REACT_APP_BACKEND_URL}${form.image_url}` : null;
+  const onFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError("");
+    if (file.size > 6 * 1024 * 1024) { setUploadError("Image must be under 6 MB"); return; }
+    const fd = new FormData();
+    fd.append("file", file);
+    setUploading(true);
+    try {
+      const r = await axios.post(`${API}/upload/product-image`, fd);
+      setForm({ ...form, image_url: r.data.url });
+    } catch (err) {
+      setUploadError(err.response?.data?.detail || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
   return (
     <div className="form-grid">
+      <label className="photo-uploader">
+        <span>Product photo</span>
+        <div className="photo-drop">
+          {previewSrc ? <img src={previewSrc} alt="Product preview" data-testid="product-image-preview" /> : <div className="photo-placeholder"><ImagePlus size={22} /><small>{uploading ? "Uploading…" : "Click to add a photo (JPG, PNG, WEBP)"}</small></div>}
+          <input data-testid="product-image-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={onFile} />
+        </div>
+        {form.image_url && <button type="button" data-testid="product-image-remove" className="text-btn danger" onClick={() => setForm({ ...form, image_url: "" })}>Remove photo</button>}
+        {uploadError && <em className="form-error" data-testid="product-image-error">{uploadError}</em>}
+      </label>
       {[["name", "Product name", "text"], ["price", "Price (₹)", "number"], ["stock", "Stock quantity", "number"]].map(([k, l, t]) => (
         <label key={k}>{l}<input data-testid={`product-${k}-input`} type={t} value={form[k] || ""} onChange={e => setForm({ ...form, [k]: e.target.value })} /></label>
       ))}
@@ -483,7 +528,7 @@ function FormProduct({ form, setForm, submit }) {
         <option value="Pantry">Pantry</option>
       </select></label>
       <label className="availability-toggle"><span>Available for ordering</span><input data-testid="product-availability-input" type="checkbox" checked={form.available !== false} onChange={e => setForm({ ...form, available: e.target.checked })} /></label>
-      <button data-testid="save-product-btn" className="primary-btn full" onClick={submit}>Save product <Check size={16} /></button>
+      <button data-testid="save-product-btn" className="primary-btn full" disabled={uploading} onClick={submit}>Save product <Check size={16} /></button>
     </div>
   );
 }
