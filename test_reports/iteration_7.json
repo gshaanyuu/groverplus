@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 7 focused testing: product photo upload (Emergent Object Storage), product delete, customer delete, image_url persistence. Backend: 11/11 new pytests pass (upload auth-gate, non-image rejection, PNG upload + byte-perfect fetch via /api/files/{path}, unauth file fetch = 401, image_url create/list/update, product/customer DELETE happy path + 401 unauth + 404 not-found). Frontend (seeded session cookie): Inventory Add-Product modal exposes product-image-input; uploading a 1x1 PNG shows product-image-preview and re-enables save-product-btn. New product persists and renders as <img class='product-photo'>. delete-product-{id} chip triggers window.confirm and removes the card. Customers tab renders both edit-customer-{id} and delete-customer-{id}; delete removes the row (13 -> 12). Zero React 'key' warnings across Overview/Inventory/Customers/Orders. Prior regression suite (test_new_features.py peer file backend_test.py from iter 6) untouched and still valid.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_features.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results_iteration7.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py:242 upload_product_image validates only Content-Type header, not magic bytes; a client could send image/png with arbitrary bytes. Acceptable for MVP but consider Pillow verify().",
+    "server.py:243 file size check runs after full read(); for large uploads consider stream-limit. MAX_IMAGE_BYTES=6MB so risk is bounded.",
+    "server.py:234 delete_product does not cascade to orders that reference it; deleted products can still appear in historical order items (probably intentional but noteworthy).",
+    "server.py:310 delete_customer does not cascade to orders referencing customer_id; historical orders keep stale customer_id. Likely intentional.",
+    "App.js FormProduct.previewSrc concatenates REACT_APP_BACKEND_URL with the returned url; server returns url starting with /api/files/... so this is correct, but keep in mind if backend later returns absolute URLs the double-prefix would break — consider `url.startsWith('http') ? url : BACKEND+url`.",
+    "The <span> in <option> DOM-nesting warning persists from Emergent's visual-editor overlay (assets.emergent.sh/scripts/emergent-main.js); not app code — same as iteration 6."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_new_features.py",
+    "/app/test_reports/pytest/pytest_results_iteration7.xml",
+    "/app/test_reports/iteration_7.json"
+  ],
+  "success_rate": { "backend": "100% (11/11 new + 13/13 regression from iter 6)", "frontend": "100% of exercised flows" },
+  "test_credentials": "Seed Mongo per /app/auth_testing.md; tests self-seed sellers + user_sessions and pass Authorization: Bearer <session_token>.",
+  "seed_data_creation": "Backend fixtures seed a scoped seller+session per test module and clean up on teardown. Frontend test used one seeded session (test_session_fe_1789488025648) — sellers/sessions still in test_database (safe to leave).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 7 added new endpoints (upload/product-image, GET /api/files/{path}, DELETE products/customers) and photo uploader UI; all pass. Object storage is real (Emergent Object Storage via INTEGRATION_PROXY_URL env). Test file for this iteration: /app/backend/tests/test_new_features.py. Regression file from iter 6 still lives at /app/backend/tests/backend_test.py — both run cleanly together.",
+  "rca of the issue": "N/A — no regressions this iteration."
+}
