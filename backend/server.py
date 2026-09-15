@@ -74,6 +74,19 @@ class Seller(BaseModel):
     email: str
     name: str
     picture: Optional[str] = None
+    role: str = "seller"
+
+
+class AllowlistEntry(BaseModel):
+    email: str
+    role: str = "seller"
+
+
+class AllowlistOut(BaseModel):
+    email: str
+    role: str
+    added_by: Optional[str] = None
+    added_at: Optional[str] = None
 
 
 class Product(BaseModel):
@@ -137,7 +150,14 @@ async def get_current_seller(request: Request) -> Seller:
     seller_doc = await db.sellers.find_one({"user_id": session["user_id"]}, {"_id": 0})
     if not seller_doc:
         raise HTTPException(status_code=401, detail="Seller not found")
+    seller_doc.setdefault("role", "seller")
     return Seller(**seller_doc)
+
+
+async def get_current_admin(seller: Seller = Depends(get_current_seller)) -> Seller:
+    if seller.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return seller
 
 
 @api.get("/")
